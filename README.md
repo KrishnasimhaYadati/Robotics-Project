@@ -19,7 +19,7 @@ Fiber platform for bot
 
 Working:
 
-<img src="">
+<img src="Diff Drive Robot.jpg">
 This is the build of the bot.
 A code has been written in the rpi interface which can control the bot. There are 2 ROS nodes here, one for teleopkey and one for motor control. The rpi is being controlled by remote SSH. We can use designated keys on the laptop to control the bot. The rpi receives the instructions first and sends relevant info to the motor driver which sends the signals to the motors in order to control the movement of the bot. The keys for moving are w, a, s, d for front, left, back, right respectively. Long pressing a key results in the bot moving in that direction. Spacebar to stop the bot and get it to a standstill.
 
