@@ -1,0 +1,71 @@
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+import RPi.GPIO as GPIO
+
+# GPIO BCM numbering
+IN1, IN2, ENA = 27, 22, 17   # Motor 1: IN1/IN2 for direction, ENA for PWM
+IN3, IN4, ENB = 5, 6, 18     # Motor 2
+
+class MotorDriver(Node):
+    def _init_(self):
+        super()._init_('motor_driver')
+        self.sub = self.create_subscription(
+            Twist, 'cmd_vel', self.cb, 10)
+
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
+        GPIO.setup([IN1, IN2, IN3, IN4], GPIO.OUT)
+        GPIO.setup([ENA, ENB], GPIO.OUT)
+
+        self.pwm1 = GPIO.PWM(ENA, 1000)
+        self.pwm2 = GPIO.PWM(ENB, 1000)
+        self.pwm1.start(0)
+        self.pwm2.start(0)
+
+    def cb(self, msg: Twist):
+        lin = msg.linear.x
+        ang = msg.angular.z
+        speed = 40  # % duty
+
+        # Direction logic
+        if lin > 0:
+            # forward
+            GPIO.output(IN1, GPIO.HIGH); GPIO.output(IN2, GPIO.LOW)
+            GPIO.output(IN3, GPIO.HIGH); GPIO.output(IN4, GPIO.LOW)
+        elif lin < 0:
+            # backward
+            GPIO.output(IN1, GPIO.LOW);  GPIO.output(IN2, GPIO.HIGH)
+            GPIO.output(IN3, GPIO.LOW);  GPIO.output(IN4, GPIO.HIGH)
+        elif ang > 0:
+            # left turn
+            GPIO.output(IN1, GPIO.LOW);  GPIO.output(IN2, GPIO.HIGH)
+            GPIO.output(IN3, GPIO.HIGH); GPIO.output(IN4, GPIO.LOW)
+        elif ang < 0:
+            # right turn
+            GPIO.output(IN1, GPIO.HIGH); GPIO.output(IN2, GPIO.LOW)
+            GPIO.output(IN3, GPIO.LOW);  GPIO.output(IN4, GPIO.HIGH)
+        else:
+            # stop
+            GPIO.output(IN1, GPIO.LOW); GPIO.output(IN2, GPIO.LOW)
+            GPIO.output(IN3, GPIO.LOW); GPIO.output(IN4, GPIO.LOW)
+
+        self.pwm1.ChangeDutyCycle(speed)
+        self.pwm2.ChangeDutyCycle(speed)
+
+    def destroy_node(self):
+        self.pwm1.stop()
+        self.pwm2.stop()
+        GPIO.cleanup()
+        super().destroy_node()
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = MotorDriver()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
